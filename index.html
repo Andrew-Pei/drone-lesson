@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>动手造一台无人机 · 初一科技课</title>
+<style>
+:root{
+  --bg:#080e1c; --panel:#0e182c; --panel2:#142239; --line:#263a60;
+  --text:#e9f1ff; --muted:#94a8cc; --cyan:#37e2d5; --orange:#ff9f43;
+  --blue:#5b9dff; --green:#7ee787; --red:#ff6b7a; --gold:#ffd166;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
+  font-family:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+.app{display:flex;height:100vh}
+/* ---------- sidebar ---------- */
+.side{width:264px;flex:0 0 264px;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;overflow:hidden}
+.brand{padding:22px 20px 16px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:19px;letter-spacing:.5px}
+.brand p{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.brand .tag{display:inline-block;margin-top:10px;font-size:11px;color:var(--cyan);
+  border:1px solid rgba(55,226,213,.35);border-radius:20px;padding:3px 10px}
+.steps{flex:1;overflow-y:auto;padding:14px 10px 20px}
+.steps::-webkit-scrollbar{width:6px}
+.steps::-webkit-scrollbar-thumb{background:#2b4068;border-radius:4px}
+.step{display:flex;gap:11px;align-items:flex-start;padding:10px 10px;border-radius:9px;
+  cursor:pointer;font-size:13px;color:var(--muted);line-height:1.45;transition:.16s}
+.step:hover{background:var(--panel2);color:var(--text)}
+.step.on{background:linear-gradient(90deg,rgba(91,157,255,.20),rgba(91,157,255,.04));
+  color:var(--text);box-shadow:inset 2px 0 0 var(--blue)}
+.num{flex:0 0 24px;height:24px;border-radius:7px;background:#1c2c49;color:var(--muted);
+  font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.step.on .num{background:var(--blue);color:#06122b}
+.step.done .num{background:rgba(126,231,135,.18);color:var(--green)}
+.foot{padding:12px 18px;border-top:1px solid var(--line);font-size:11px;color:#6077a0;line-height:1.7}
+/* ---------- stage ---------- */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.top{padding:18px 30px 14px;border-bottom:1px solid var(--line);display:flex;
+  align-items:flex-end;justify-content:space-between;gap:16px}
+.kicker{font-size:12px;color:var(--cyan);letter-spacing:2px;margin-bottom:6px}
+.top h2{font-size:27px;font-weight:700;letter-spacing:.5px}
+.top .hint{font-size:12px;color:var(--muted);text-align:right;line-height:1.7}
+.body{flex:1;overflow-y:auto;padding:22px 30px 26px;display:grid;
+  grid-template-columns:minmax(300px,390px) minmax(420px,1fr);gap:22px;align-content:start}
+@media(max-width:1100px){.body{grid-template-columns:1fr}.side{width:210px;flex-basis:210px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+.card h3{font-size:15px;color:var(--blue);margin-bottom:12px;letter-spacing:.5px}
+.lead{font-size:15px;line-height:1.9;color:var(--text);margin-bottom:12px}
+.note{font-size:13px;line-height:1.85;color:var(--muted);background:var(--panel2);
+  border-left:3px solid var(--line);border-radius:0 8px 8px 0;padding:11px 13px;margin:12px 0}
+.note.q{border-left-color:var(--gold);color:#d9e3f7}
+.note.ok{border-left-color:var(--green)}
+.note.warn{border-left-color:var(--red)}
+.note b{color:var(--text)}
+.formula{font-family:Consolas,"Courier New",monospace;font-size:14px;color:var(--cyan);
+  background:#081426;border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+  margin:10px 0;line-height:1.9}
+/* controls */
+.row{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
+button{font-family:inherit;font-size:13px;cursor:pointer;border-radius:8px;padding:9px 15px;
+  background:var(--panel2);color:var(--text);border:1px solid var(--line);transition:.15s}
+button:hover{border-color:var(--blue);background:#1b2d4d}
+button.primary{background:var(--blue);color:#06122b;border-color:var(--blue);font-weight:700}
+button.primary:hover{background:#7db2ff}
+button.ghost{background:transparent}
+button.sel{border-color:var(--cyan);background:rgba(55,226,213,.12);color:var(--cyan)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.fb{margin-top:12px;font-size:13px;line-height:1.75;min-height:22px;color:var(--muted)}
+.fb.good{color:var(--green)} .fb.bad{color:var(--red)}
+/* blade cards */
+.blades{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.blade{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;
+  cursor:pointer;text-align:center;transition:.15s}
+.blade:hover{border-color:var(--blue)}
+.blade svg{width:100%;height:62px;display:block}
+.blade span{font-size:12px;color:var(--muted)}
+.blade.pick{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset}
+.blade.pick span{color:var(--cyan)}
+.blade.no{border-color:var(--red)}
+.blade.yes{border-color:var(--green)}
+/* checkbox list */
+.opts{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.opt{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:9px;padding:10px 12px;font-size:14px;cursor:pointer}
+.opt:hover{border-color:var(--blue)}
+.opt input{accent-color:var(--cyan);width:16px;height:16px}
+/* slider */
+.sl{width:100%;accent-color:var(--cyan);margin:8px 0 4px}
+.slrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.ro{background:#081426;border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.ro small{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+.ro b{font-size:17px;color:var(--cyan);font-family:Consolas,monospace}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.bar{text-align:center;font-size:11px;color:var(--muted)}
+.bar .track{height:52px;background:#081426;border:1px solid var(--line);border-radius:6px;
+  position:relative;overflow:hidden;margin-bottom:5px}
+.bar .fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,var(--cyan),#1b8f96);height:50%}
+.bar .fill.o{background:linear-gradient(180deg,var(--orange),#a55d20)}
+/* canvas */
+.vizwrap{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px;position:sticky;top:0}
+.vizwrap .vhead{display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--muted);margin-bottom:10px}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#1b2d4d;color:var(--muted)}
+.badge.live{background:rgba(126,231,135,.14);color:var(--green)}
+canvas{width:100%;aspect-ratio:760/480;display:block;border-radius:9px;background:#0d1628;cursor:default}
+canvas.clickable{cursor:pointer}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+/* nav */
+.nav{display:flex;justify-content:space-between;align-items:center;padding:13px 30px;
+  border-top:1px solid var(--line);background:var(--panel)}
+.nav .prog{font-size:12px;color:var(--muted)}
+.nav .prog b{color:var(--cyan)}
+.navbtns{display:flex;gap:9px}
+/* summary */
+.sumlist{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:12px 0}
+.sumitem{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px}
+.sumitem b{display:block;font-size:13px;color:var(--cyan);margin-bottom:4px}
+.sumitem span{font-size:12px;color:var(--muted);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <h1>动手造一台无人机</h1>
+      <p>初一科技课 · 从一次次失败里<br>把零件「逼」出来</p>
+      <span class="tag">12 站 · 约 40 分钟</span>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="foot">← / → 翻页<br>灰色区域可点击操作</div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div><div class="kicker" id="kicker"></div><h2 id="title"></h2></div>
+      <div class="hint" id="hint"></div>
+    </div>
+    <div class="body">
+      <div>
+        <div class="card" id="content"></div>
+      </div>
+      <div class="vizwrap">
+        <div class="vhead"><span>演示台 · 俯视 / 侧视示意</span><span class="badge" id="badge">示意动画</span></div>
+        <canvas id="cv"></canvas>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="prog">第 <b id="pn">1</b> / 12 站</div>
+      <div class="navbtns">
+        <button class="ghost" id="prev">← 上一站</button>
+        <button class="primary" id="next">下一站 →</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ========================= 基础 ========================= */
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const W=760,H=480, dpr=window.devicePixelRatio||1;
+cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+const C={bg:'#0d1628',text:'#e9f1ff',muted:'#94a8cc',cyan:'#37e2d5',orange:'#ff9f43',
+  blue:'#5b9dff',green:'#7ee787',red:'#ff6b7a',gold:'#ffd166',line:'#263a60'};
+const F='"PingFang SC","Microsoft YaHei",sans-serif';
+function bg(){ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(91,157,255,.06)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}}
+function T(s,x,y,sz,col,align,weight){ctx.font=(weight||'400')+' '+sz+'px '+F;
+  ctx.fillStyle=col||C.text;ctx.textAlign=align||'left';ctx.textBaseline='alphabetic';ctx.fillText(s,x,y);}
+function rr(x,y,w,h,r,fill,stroke,lw){ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h);
+  if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}}
+function arrow(x1,y1,x2,y2,col,lw){ctx.strokeStyle=col;ctx.lineWidth=lw||2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(a-.45),y2-9*Math.sin(a-.45));
+  ctx.lineTo(x2-9*Math.cos(a+.45),y2-9*Math.sin(a+.45));ctx.closePath();ctx.fillStyle=col;ctx.fill();}
+function label(s,x,y,col){T(s,x,y,13,col||C.muted);}
+const ARM=[[-1,-1],[1,-1],[1,1],[-1,1]];
+/* 俯视四旋翼 */
+function droneTop(cx,cy,sc,o){
+  o=o||{};const d=sc*.62,pr=sc*.30;
+  const dirs=o.dirs||[1,1,1,1],th=o.thr||[.6,.6,.6,.6];
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(o.yaw||0);
+  ctx.strokeStyle='#33507f';ctx.lineWidth=sc*.085;ctx.lineCap='round';
+  ARM.forEach(p=>{ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(p[0]*d,p[1]*d);ctx.stroke();});
+  rr(-sc*.20,-sc*.20,sc*.40,sc*.40,sc*.07,'#1b2c4a',C.blue,2);
+  ctx.fillStyle=C.gold;ctx.beginPath();ctx.arc(0,-sc*.27,sc*.045,0,7);ctx.fill();
+  T('前',0,-sc*.36,11,C.gold,'center');
+  ARM.forEach((p,i)=>{
+    const x=p[0]*d,y=p[1]*d;
+    ctx.save();ctx.translate(x,y);
+    /* 转速光晕 */
+    const col=dirs[i]>0?C.cyan:C.orange;
+    ctx.fillStyle=col;ctx.globalAlpha=.07+th[i]*.14;
+    ctx.beginPath();ctx.arc(0,0,pr*1.15,0,7);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,pr,0,7);ctx.stroke();
+    ctx.save();ctx.rotate((o.t||0)*(3+th[i]*13)*dirs[i]+i*.8);
+    ctx.fillStyle=col;
+    for(let k=0;k<2;k++){ctx.save();ctx.rotate(k*Math.PI);
+      ctx.beginPath();ctx.ellipse(pr*.55,0,pr*.55,pr*.13,0,0,7);ctx.fill();ctx.restore();}
+    ctx.restore();
+    /* 转向弧箭头 */
+    ctx.strokeStyle=col;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,pr*1.30,dirs[i]>0?-.9:.9,dirs[i]>0?.9:2.3);ctx.stroke();
+    ctx.restore();
+    if(o.tags) T((i+1)+'',x,y+5,12,'#0a1428','center','700');
+  });
+  ctx.restore();
+}
+/* 侧视飞机 */
+function plane(x,y,tilt,thr){
+  ctx.save();ctx.translate(x,y);ctx.rotate(tilt||0);
+  ctx.strokeStyle='#33507f';ctx.lineWidth=6;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-70,0);ctx.lineTo(70,0);ctx.stroke();
+  rr(-24,-13,48,26,6,'#1b2c4a',C.blue,2);
+  [-70,70].forEach(px=>{
+    ctx.save();ctx.translate(px,-8);ctx.rotate((performance.now()/1000)*(6+thr*16));
+    ctx.fillStyle=C.cyan;
+    for(let k=0;k<2;k++){ctx.save();ctx.rotate(k*Math.PI);
+      ctx.beginPath();ctx.ellipse(20,0,20,3.5,0,0,7);ctx.fill();ctx.restore();}
+    ctx.restore();
+    ctx.strokeStyle='#33507f';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,-8);ctx.stroke();
+  });
+  ctx.strokeStyle='#33507f';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(-20,13);ctx.lineTo(-30,26);ctx.moveTo(20,13);ctx.lineTo(30,26);ctx.stroke();
+  /* 升力箭头 */
+  const L=14+thr*30;arrow(0,-14,0,-14-L,C.cyan,2);
+  ctx.restore();
+}
+function sideView(o){
+  const gy=H-72,ppm=58;bg();
+  ctx.fillStyle='#16233c';ctx.fillRect(0,gy,W,H-gy);
+  ctx.strokeStyle='#3a5c8f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();
+  for(let i=0;i<10;i++){ctx.strokeStyle='rgba(58,92,143,.4)';
+    ctx.beginPath();ctx.moveTo(i*80+10,gy);ctx.lineTo(i*80-10,H);ctx.stroke();}
+  if(o.target!=null){const ty=gy-o.target*ppm;
+    ctx.strokeStyle=C.green;ctx.setLineDash([9,7]);ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(50,ty);ctx.lineTo(W-50,ty);ctx.stroke();ctx.setLineDash([]);
+    T('目标 '+o.target.toFixed(1)+' m',W-56,ty-9,14,C.green,'right');}
+  if(o.wind){ctx.strokeStyle=C.red;ctx.lineWidth=2;
+    for(let i=0;i<3;i++){const wy=180+i*70;
+      arrow(20+(i%2)*30,wy,150+(i%2)*30,wy,C.red,2);}
+    T('阵风 →',26,150,13,C.red);}
+  const py=gy-Math.max(0,o.alt||0)*ppm;
+  plane(W/2,Math.max(-120,Math.min(gy-20,py)),o.tilt||0,o.thr||0);
+  const h=Math.max(0,o.alt||0);
+  T('当前高度  '+h.toFixed(2)+' m',24,36,18,C.text,'left','700');
+  T('电机转速  '+Math.round((o.thr||0)*100)+'%',24,62,14,C.cyan);
+  /* 转速条 */
+  rr(W-190,26,164,14,7,'#081426',C.line,1);
+  rr(W-189,27,162*Math.max(0,Math.min(1,o.thr||0)),12,6,C.cyan);
+  if(o.msg)T(o.msg,W/2,H-20,15,C.gold,'center','700');
+}
+/* ========================= 状态 ========================= */
+let cur=0,S={};
+const $=id=>document.getElementById(id);
+function fb(s,cls){const e=$('fb');if(e){e.textContent=s;e.className='fb'+(cls?' '+cls:'');}}
+function badge(s,live){const e=$('badge');e.textContent=s;e.className='badge'+(live?' live':'');}
+function legend(items){$('legend').innerHTML=items.map(i=>'<span><i class="dot" style="background:'+i[1]+'"></i>'+i[0]+'</span>').join('');}
+function bars(vals,dirs){
+  const e=$('bars');if(!e)return;
+  e.innerHTML=vals.map((v,i)=>'<div class="bar"><div class="track"><div class="fill'+
+    ((dirs&&dirs[i]<0)?' o':'')+'" style="height:'+Math.round(v*100)+'%"></div></div>'+
+    '桨'+(i+1)+' '+Math.round(v*100)+'%</div>').join('');
+}
+/* ========================= 12 站 ========================= */
+const steps=[
+/* 0 */{
+ k:'第 1 站 · 开工',t:'动手造一台',hint:'目标：让它稳稳悬停在教室半空',
+ html:()=>`<h3>今天不背书，我们自己造</h3>
+ <p class="lead">给你一堆零件，装起来，通电，看它能不能飞。</p>
+ <div class="sumlist">
+  <div class="sumitem"><b>螺旋桨</b><span>把空气往下推，换来向上的力</span></div>
+  <div class="sumitem"><b>电机</b><span>让桨转起来，转多快由我们说了算</span></div>
+  <div class="sumitem"><b>机架</b><span>把四个电机固定成一个整体</span></div>
+  <div class="sumitem"><b>控制系统</b><span>飞机的「脑子」，今天的主角</span></div>
+ </div>
+ <div class="note q">先别急着画图纸 —— 这四个部件里，有一个现在还不知道该长什么样。我们一边试、一边把它补上。</div>
+ <div class="row"><button class="primary" data-act="go" data-to="1">先造螺旋桨 →</button></div>
+ <div class="fb" id="fb"></div>`,
+ legend:()=>legend([['机架',C.blue],['螺旋桨',C.cyan],['机头方向',C.gold]]),
+ reset:()=>{},
+ draw:(dt,t)=>{bg();droneTop(W/2,H/2,150,{t,dirs:[1,-1,1,-1],thr:[.55,.55,.55,.55],tags:false});
+   T('俯视图 · 四个桨 + 机架',W/2,44,17,C.text,'center','700');
+   /* 部件标注 */
+   const parts=[[120,120,'螺旋桨'],[560,120,'电机'],[120,360,'机架'],[560,360,'控制系统 ?']];
+   parts.forEach((p,i)=>{rr(p[0]-8,p[1]-24,150,32,8,'#142239',C.line,1);
+     T(p[2],p[0]+67,p[1]-3,13,i===3?C.gold:C.muted,'center');});
+   T('中间那块「脑子」该怎么工作？往下看',W/2,H-24,14,C.gold,'center');}
+},
+/* 1 */{
+ k:'第 2 站 · 零件',t:'叶片形状：只有一种是对的',hint:'让学生先选，选错比选对更有价值',
+ html:()=>`<h3>第一道选择题</h3>
+ <p class="lead">四片叶子，形状都不一样。旋转起来，<b>只有一片</b>能把空气往下推、把飞机抬起来。</p>
+ <div class="blades" id="blades">
+  <div class="blade" data-act="blade" data-i="0"><svg viewBox="0 0 120 62">
+    <rect x="12" y="27" width="96" height="9" rx="2" fill="#8fa3c8"/>
+    <path d="M12 27h96" stroke="#c8d6f0" stroke-width="1"/></svg><span>A 平板条</span></div>
+  <div class="blade" data-act="blade" data-i="1"><svg viewBox="0 0 120 62">
+    <path d="M12 31 Q60 12 108 31 Q60 50 12 31Z" fill="#8fa3c8"/></svg><span>B 对称梭形</span></div>
+  <div class="blade" data-act="blade" data-i="2"><svg viewBox="0 0 120 62">
+    <path d="M14 38 Q55 14 106 22 Q70 40 14 38Z" fill="#37e2d5"/></svg><span>C 上凸下平 · 带斜角</span></div>
+  <div class="blade" data-act="blade" data-i="3"><svg viewBox="0 0 120 62">
+    <path d="M14 24 Q55 48 106 40 Q70 22 14 24Z" fill="#ff9f43"/></svg><span>D 上下装反</span></div>
+ </div>
+ <div class="note">提示：桨叶不是「扇风」，是斜着切进空气。想想把手伸出车窗，手掌一斜，风就把手往上托。</div>
+ <div class="fb" id="fb">点一片试试。</div>`,
+ legend:()=>legend([['气流',C.blue],['向下的推力',C.cyan],['升力',C.green]]),
+ reset:()=>{S.pick=-1;},
+ draw:(dt,t)=>{bg();
+   const names=['A 平板条','B 对称梭形','C 上凸下平 · 带斜角','D 上下装反'];
+   const cols=['#8fa3c8','#8fa3c8',C.cyan,C.orange];
+   T('叶片剖面（放大）',W/2,42,17,C.text,'center','700');
+   /* 气流线 */
+   for(let i=0;i<5;i++){const x=170+i*105;arrow(x,110,x,180,C.blue,2);}
+   T('空气流过来 →',170,100,13,C.blue);
+   /* 剖面 */
+   ctx.save();ctx.translate(W/2,255);
+   const p=S.pick;
+   ctx.fillStyle=p<0?'#33456b':cols[p];
+   ctx.beginPath();
+   if(p===0){ctx.rect(-150,-6,300,12);}
+   else if(p===1){ctx.moveTo(-150,0);ctx.quadraticCurveTo(0,-30,150,0);ctx.quadraticCurveTo(0,30,-150,0);}
+   else if(p===3){ctx.moveTo(-150,18);ctx.quadraticCurveTo(0,-42,150,-20);ctx.quadraticCurveTo(0,2,-150,18);}
+   else if(p===2){ctx.moveTo(-150,22);ctx.quadraticCurveTo(0,-42,150,-20);ctx.quadraticCurveTo(0,10,-150,22);}
+   else{ctx.moveTo(-150,22);ctx.quadraticCurveTo(0,-42,150,-20);ctx.quadraticCurveTo(0,10,-150,22);}
+   ctx.fill();ctx.restore();
+   if(p>=0){
+     T(names[p],W/2,330,15,cols[p],'center','700');
+     if(p===2){arrow(W/2,220,W/2,120,C.green,3);T('升力 ↑ 飞机被托起来',W/2,110,15,C.green,'center','700');}
+     else if(p===3){arrow(W/2,290,W/2,390,C.red,3);T('力朝下，飞不起来',W/2,410,15,C.red,'center');}
+     else{T('几乎没有升力',W/2,390,15,C.muted,'center');}
+   }else T('← 先在左边选一片',W/2,390,15,C.gold,'center');
+ }
+},
+/* 2 */{
+ k:'第 3 站 · 第一次试飞',t:'四个桨一起转，机身怎么也在转？',hint:'这是全场最出效果的一次失败',
+ html:()=>`<h3>接上电机，通电！</h3>
+ <p class="lead">四个桨装好了，四台电机一起给满电，飞是飞起来了……可是机身自己一直在打转。</p>
+ <div class="row"><button class="primary" id="flybtn" data-act="fly">通电起飞</button>
+ <button data-act="stopfly">断电重来</button></div>
+ <div class="readout">
+  <div class="ro"><small>四个桨的转向</small><b>全部相同</b></div>
+  <div class="ro"><small>机身自转</small><b id="spinro">0 °/s</b></div>
+ </div>
+ <div class="note warn" id="why" style="display:none"><b>为什么？</b> 电机把桨往一个方向拧，空气就会把机身往<b>反方向</b>拧（这叫反扭矩）。四个拧的方向都一样，机身就被越拧越快，像坐在转椅上猛地挥手。</div>
+ <div class="fb" id="fb">先点「通电起飞」。</div>`,
+ legend:()=>legend([['同向旋转的桨',C.cyan],['反扭矩',C.red]]),
+ reset:()=>{S.fly=false;S.spin=0;S.yaw=0;S.spinV=0;},
+ draw:(dt,t)=>{bg();
+   if(S.fly){S.spinV=Math.min(95,S.spinV+18*dt);S.yaw+=S.spinV*Math.PI/180*dt;}
+   droneTop(W/2,H/2,155,{t,yaw:S.yaw,dirs:[1,1,1,1],thr:[1,1,1,1]});
+   T('俯视图',W/2,38,16,C.text,'center','700');
+   if(S.fly){
+     ctx.strokeStyle=C.red;ctx.lineWidth=3;ctx.setLineDash([6,6]);
+     ctx.beginPath();ctx.arc(W/2,H/2,205,-1.2,1.2);ctx.stroke();ctx.setLineDash([]);
+     arrow(W/2+205*Math.cos(1.2),H/2+205*Math.sin(1.2),W/2+205*Math.cos(1.7),H/2+205*Math.sin(1.7),C.red,3);
+     T('机身在自转！',W/2,H-30,18,C.red,'center','700');
+     T('净反扭矩 ≠ 0',W/2,72,14,C.red,'center');
+     const e=$('spinro');if(e)e.textContent=Math.round(S.spinV)+' °/s';
+     const w=$('why');if(w)w.style.display='block';
+   }else{T('等待通电',W/2,H-30,15,C.muted,'center');}
+ }
+},
+/* 3 */{
+ k:'第 4 站 · 改',t:'调换方向：让力互相抵消',hint:'点画面里的桨，切换它的转向',
+ html:()=>`<h3>怎么改？</h3>
+ <p class="lead">不用换零件，把其中两台电机<b>反过来接</b>就行。目标：让往左拧的力和往右拧的力一样多。</p>
+ <div class="note q">规则：<b>对角的两个桨同向，相邻的两个桨反向。</b>点右边画面上的桨叶就能切换。</div>
+ <div class="readout">
+  <div class="ro"><small>净反扭矩</small><b id="torque">+4</b></div>
+  <div class="ro"><small>机身</small><b id="stable">打转中</b></div>
+ </div>
+ <div class="row"><button data-act="alldir">全部恢复同向</button></div>
+ <div class="fb" id="fb">试试点桨叶。</div>`,
+ legend:()=>legend([['顺时针（正桨）',C.cyan],['逆时针（反桨）',C.orange]]),
+ reset:()=>{S.dirs=[1,1,1,1];S.yaw=0;},
+ click:(x,y)=>{
+   const d=155*.62, cx=W/2,cy=H/2;
+   let best=-1,bd=1e9;
+   ARM.forEach((p,i)=>{const dx=x-(cx+p[0]*d),dy=y-(cy+p[1]*d),dd=dx*dx+dy*dy;
+     if(dd<bd){bd=dd;best=i;}});
+   if(bd<(155*.34)**2){S.dirs[best]*=-1;
+     const q=$('fb');if(q){q.textContent='切换了桨 '+(best+1)+' 的转向。';q.className='fb';}}
+ },
+ draw:(dt,t)=>{bg();
+   const net=S.dirs.reduce((a,b)=>a+b,0);
+   if(net!==0)S.yaw+=net*0.28*dt;
+   droneTop(W/2,H/2,155,{t,yaw:S.yaw,dirs:S.dirs,thr:[.8,.8,.8,.8],tags:true});
+   T('点桨叶切换转向',W/2,38,16,C.text,'center','700');
+   const ok=(S.dirs[0]===S.dirs[2]&&S.dirs[1]===S.dirs[3]&&S.dirs[0]!==S.dirs[1]);
+   T(ok?'✔ 对角同向、相邻反向 —— 力抵消了':'✘ 还有多余的扭矩',W/2,H-28,16,ok?C.green:C.red,'center','700');
+   const a=$('torque'),b=$('stable');
+   if(a)a.textContent=(net>0?'+':'')+net;
+   if(b){b.textContent=ok?'稳定不打转':'打转中';b.style.color=ok?C.green:C.red;}
+   if(ok)fb('成功了：左边拧多少，右边就拧回来多少，机身不再自转。','good');
+ }
+},
+/* 4 */{
+ k:'第 5 站 · 第二次试飞',t:'不打转了，可它一直往上飞',hint:'引出「转速必须可控」',
+ html:()=>`<h3>再飞一次</h3>
+ <p class="lead">机身稳了。但电机一直给满电，飞机就一直往上冲，根本停不下来。</p>
+ <div class="row"><button class="primary" id="fly2" data-act="fly2">起飞</button>
+ <button data-act="stop2">断电重来</button></div>
+ <div class="readout">
+  <div class="ro"><small>电机转速</small><b>100% 恒定</b></div>
+  <div class="ro"><small>控制指令</small><b style="color:var(--red)">无</b></div>
+ </div>
+ <div class="note q">想一想：想让它停在 3 米高，我们得先能<b>改变</b>什么？</div>
+ <div class="fb" id="fb">点「起飞」看看。</div>`,
+ legend:()=>legend([['升力',C.cyan],['目标高度',C.green]]),
+ reset:()=>{S.fly=false;S.alt=0;},
+ draw:(dt,t)=>{if(S.fly)S.alt+=1.15*dt;
+   sideView({alt:S.alt,thr:S.fly?1:0,msg:S.fly?'升力 > 重力，一直加速上升':'等待通电'});
+   if(S.fly&&S.alt>3.2)T('停不下来！',W/2,100,20,C.red,'center','700');
+ }
+},
+/* 5 */{
+ k:'第 6 站 · 加装备',t:'装传感器：飞机得先「看见」自己',hint:'多选，但这一站只需要一个',
+ html:()=>`<h3>要控制，先得知道自己现在怎么样</h3>
+ <p class="lead">问题换成：想让飞机停在 3 米，飞机<b>最少</b>需要知道下面哪一样？</p>
+ <div class="opts" id="opts">
+  <label class="opt"><input type="checkbox" data-opt="h">机身离地多高</label>
+  <label class="opt"><input type="checkbox" data-opt="a">机身歪了多少度</label>
+  <label class="opt"><input type="checkbox" data-opt="c">机身是什么颜色</label>
+  <label class="opt"><input type="checkbox" data-opt="t">空气温度</label>
+  <label class="opt"><input type="checkbox" data-opt="b">电池还剩多少</label>
+  <label class="opt"><input type="checkbox" data-opt="s">桨转了多少圈</label>
+ </div>
+ <div class="row"><button class="primary" data-act="checkopts">提交答案</button></div>
+ <div class="note" id="sensor" style="display:none"><b>高度传感器</b>：气压计（越高气压越低）、超声波或激光测距，都能告诉飞控「我现在几米」。</div>
+ <div class="fb" id="fb">勾一勾，再提交。</div>`,
+ legend:()=>legend([['传感器',C.gold],['被测量的量',C.cyan]]),
+ reset:()=>{},
+ draw:(dt,t)=>{bg();
+   T('飞控需要知道什么？',W/2,44,17,C.text,'center','700');
+   droneTop(W/2,H/2-10,140,{t,dirs:[1,-1,1,-1],thr:[.5,.5,.5,.5]});
+   /* 传感器盒 */
+   rr(W/2-42,H/2-22,84,44,8,'#2a2410',C.gold,2);
+   T('传感器',W/2,H/2+5,14,C.gold,'center','700');
+   arrow(W/2-100,H/2,W/2-48,H/2,C.gold,2);
+   T('?',W/2-120,H/2+5,18,C.gold,'center','700');
+   arrow(W/2+48,H/2,W/2+110,H/2,C.blue,2);
+   T('→ 飞控',W/2+118,H/2+5,14,C.blue);
+   T('测不到的量，就没法控制',W/2,H-40,15,C.muted,'center');
+ }
+},
+/* 6 */{
+ k:'第 7 站 · 第一次闭环',t:'低了加速，高了减速',hint:'拖动目标高度，观察飞机会不会「晃」',
+ html:()=>`<h3>最朴素的控制办法</h3>
+ <div class="formula">高度 &lt; 目标  →  提升电机转速 ↑<br>高度 &gt; 目标  →  降低电机转速 ↓</div>
+ <p class="lead">就这么两条规则。拖动下面的目标高度，看飞机怎么做。</p>
+ <div class="slrow"><span>目标高度</span><b id="tgtv" style="color:var(--cyan)">3.0 m</b></div>
+ <input class="sl" id="tgt" type="range" min="1" max="4.5" step="0.1" value="3">
+ <div class="readout">
+  <div class="ro"><small>当前高度</small><b id="altv">0.00 m</b></div>
+  <div class="ro"><small>电机转速</small><b id="thrv">50%</b></div>
+ </div>
+ <div class="row"><button data-act="resetctrl">回到地面重来</button>
+ <button data-act="windon" id="windbtn">切换到室外（有风）</button></div>
+ <div class="note q" id="osc">盯住看：飞机是稳稳停住，还是会在目标高度附近上下晃？为什么会晃？</div>
+ <div class="fb" id="fb">室内无风，飞机可以悬停在目标高度。</div>`,
+ legend:()=>legend([['目标高度',C.green],['升力',C.cyan],['电机转速',C.orange]]),
+ reset:()=>{S.alt=0;S.v=0;S.thr=.5;S.target=3;S.wind=false;S.judge='低于目标 → 加速';},
+ tick:(dt,t)=>{
+   const err=S.target-S.alt;
+   let des=.5+Math.max(-.4,Math.min(.4,err*.34))-S.v*.14;
+   S.thr=Math.max(.04,Math.min(1,des));
+   S.judge=err>.06?'低于目标 → 加速':(err<-.06?'高于目标 → 减速':'差不多到了 → 保持');
+   const a=(S.thr-.5)*9.2;
+   S.v=(S.v+a*dt)*.992;S.alt+=S.v*dt;if(S.alt<0){S.alt=0;S.v=0;}
+   const e=$('altv'),f=$('thrv');
+   if(e)e.textContent=S.alt.toFixed(2)+' m';
+   if(f)f.textContent=Math.round(S.thr*100)+'%';
+ },
+ draw:(dt,t)=>{sideView({alt:S.alt,target:S.target,thr:S.thr,msg:S.judge});
+   if(S.wind)T('室外有风 → 下一站',W/2,90,15,C.red,'center','700');}
+},
+/* 7 */{
+ k:'第 8 站 · 室外翻车',t:'一阵风就把它掀翻了',hint:'高度控制救不了倾斜',
+ html:()=>`<h3>拿到室外试试</h3>
+ <p class="lead">高度控制还在好好工作，转速也在自动调。可一阵侧风过来，飞机歪了，然后直接翻掉。</p>
+ <div class="row"><button class="primary" id="gust" data-act="gust">来一阵风</button>
+ <button data-act="resetgust">重新悬停</button></div>
+ <div class="readout">
+  <div class="ro"><small>高度传感器</small><b style="color:var(--green)">工作正常</b></div>
+  <div class="ro"><small>机身倾斜</small><b id="tiltv">0°</b></div>
+ </div>
+ <div class="note warn"><b>关键：</b>四个桨一起加速，只能让飞机<b>整体</b>升降。机身一歪，升力就斜了，越推越偏。飞控还缺一双「看姿势」的眼睛。</div>
+ <div class="fb" id="fb">点「来一阵风」。</div>`,
+ legend:()=>legend([['阵风',C.red],['倾斜的升力',C.orange]]),
+ reset:()=>{S.alt=3;S.tilt=0;S.gust=false;S.fall=false;},
+ tick:(dt)=>{if(S.gust&&!S.fall){S.tilt+=0.85*dt;
+     if(S.tilt>1.25){S.fall=true;}
+   }else if(S.fall){S.alt=Math.max(0,S.alt-2.2*dt);S.tilt=Math.min(2.6,S.tilt+.5*dt);}
+   const e=$('tiltv');if(e)e.textContent=Math.round(S.tilt*180/Math.PI)+'°';},
+ draw:(dt,t)=>{sideView({alt:S.alt,target:S.fall?null:3,thr:.5,tilt:S.tilt,wind:S.gust,
+     msg:S.fall?'翻覆了 —— 只知道高度不够':'高度正常，但机身歪了'});}
+},
+/* 8 */{
+ k:'第 9 站 · 感知升级',t:'姿态：三个角度',hint:'拖动三个滑块，认识 Roll / Pitch / Yaw',
+ html:()=>`<h3>再加一样传感器：姿态</h3>
+ <p class="lead">飞控要知道自己歪成什么样，用三个角度就够了。</p>
+ <div class="sumlist">
+  <div class="sumitem"><b>横滚 Roll</b><span>左右倾斜（左边低还是右边低）</span></div>
+  <div class="sumitem"><b>俯仰 Pitch</b><span>前后低头 / 抬头</span></div>
+  <div class="sumitem"><b>偏航 Yaw</b><span>机头朝哪个方向</span></div>
+  <div class="sumitem"><b>IMU 惯性测量单元</b><span>陀螺仪 + 加速度计，装在小芯片里</span></div>
+ </div>
+ <div class="slrow"><span>横滚</span><b id="rv">0°</b></div><input class="sl" id="rsl" type="range" min="-35" max="35" value="0">
+ <div class="slrow"><span>俯仰</span><b id="pv">0°</b></div><input class="sl" id="psl" type="range" min="-35" max="35" value="0">
+ <div class="slrow"><span>偏航</span><b id="yv">0°</b></div><input class="sl" id="ysl" type="range" min="-90" max="90" value="0">
+ <div class="row"><button data-act="zeropose">摆平</button></div>
+ <div class="fb" id="fb">拖一拖滑块，看机身怎么动。</div>`,
+ legend:()=>legend([['水平参考线',C.green],['当前姿态',C.orange]]),
+ reset:()=>{S.r=0;S.p=0;S.y=0;},
+ draw:(dt,t)=>{bg();
+   T('姿态示意',W/2,38,17,C.text,'center','700');
+   droneTop(250,250,120,{t,yaw:S.y*Math.PI/180,dirs:[1,-1,1,-1],thr:[.5,.5,.5,.5]});
+   /* 两个水平仪 */
+   const gauges=[[560,170,'横滚 Roll',S.r],[560,320,'俯仰 Pitch',S.p]];
+   gauges.forEach(g=>{
+     ctx.strokeStyle=C.blue;ctx.lineWidth=2;ctx.beginPath();ctx.arc(g[0],g[1],62,0,7);ctx.stroke();
+     ctx.strokeStyle='rgba(126,231,135,.5)';ctx.setLineDash([5,5]);ctx.lineWidth=1;
+     ctx.beginPath();ctx.moveTo(g[0]-58,g[1]);ctx.lineTo(g[0]+58,g[1]);ctx.stroke();ctx.setLineDash([]);
+     ctx.save();ctx.translate(g[0],g[1]);ctx.rotate(-g[3]*Math.PI/180);
+     ctx.strokeStyle=C.orange;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-46,0);ctx.lineTo(46,0);ctx.stroke();
+     ctx.fillStyle=C.orange;ctx.beginPath();ctx.arc(0,0,5,0,7);ctx.fill();ctx.restore();
+     T(g[2],g[0],g[1]+88,13,C.muted,'center');
+   });
+   T('机头朝向（俯视旋转）= 偏航',250,412,13,C.muted,'center');
+   T('三个角度都测出来，飞控才知道该怎么补救',W/2,H-22,14,C.gold,'center');
+ }
+},
+/* 9 */{
+ k:'第 10 站 · 姿态闭环',t:'哪边低，就让哪边的桨快点',hint:'点「推一下」，看四个桨如何分工',
+ html:()=>`<h3>四条规则，把飞机扶平</h3>
+ <div class="formula">向右倾斜 → 右侧两个桨加速 → 右边被抬起来<br>向左倾斜 → 左侧两个桨加速 → 左边被抬起来</div>
+ <p class="lead">不是四个桨一起动，而是<b>有差别</b>地动。差别本身就是控制。</p>
+ <div class="row"><button class="primary" data-act="push">推一下飞机</button>
+ <button data-act="pushL">往左推</button><button data-act="level">恢复水平</button></div>
+ <div class="readout">
+  <div class="ro"><small>机身倾斜</small><b id="rollv">0°</b></div>
+  <div class="ro"><small>状态</small><b id="stv">悬停中</b></div>
+ </div>
+ <div class="bars" id="bars"></div>
+ <div class="note ok">加上这一层，室外有风也能悬停了 —— 风一吹歪，飞控立刻把低的那边抬回来。</div>
+ <div class="fb" id="fb">点「推一下飞机」。</div>`,
+ legend:()=>legend([['正桨',C.cyan],['反桨',C.orange],['加速的桨',C.green]]),
+ reset:()=>{S.roll=0;S.bars=[.5,.5,.5,.5];},
+ tick:(dt)=>{
+   S.roll+=(-S.roll*3.4)*dt;
+   const c=Math.max(-.32,Math.min(.32,S.roll*.75));
+   /* 桨序 [左上,右上,右下,左下]；右倾(roll>0) → 右侧(1,2)加速 */
+   S.bars=[.5-c,.5+c,.5+c,.5-c].map(v=>Math.max(.08,Math.min(.95,v)));
+   bars(S.bars,[1,-1,1,-1]);
+   const e=$('rollv'),f=$('stv');
+   if(e)e.textContent=Math.round(S.roll*180/Math.PI)+'°';
+   if(f){f.textContent=Math.abs(S.roll)>0.03?'自动扶平中':'悬停中';f.style.color=Math.abs(S.roll)>0.03?C.orange:C.green;}
+   if(Math.abs(S.roll)>0.03)fb('检测到倾斜 → 低的那一侧桨加速 → 机身回正。','good');
+ },
+ draw:(dt,t)=>{bg();
+   ctx.save();ctx.translate(W/2,H/2);ctx.rotate(S.roll*.5);ctx.translate(-W/2,-H/2);
+   droneTop(W/2,H/2,150,{t,dirs:[1,-1,1,-1],thr:S.bars});
+   ctx.restore();
+   T('俯视 · 四个桨转速不同',W/2,40,17,C.text,'center','700');
+   if(Math.abs(S.roll)>0.03){
+     const side=S.roll>0?'右侧':'左侧';
+     T(side+'偏低 → '+side+'两桨加速',W/2,H-32,17,C.green,'center','700');
+   }else T('姿态水平，四个桨转速相同',W/2,H-32,16,C.muted,'center');
+ }
+},
+/* 10 */{
+ k:'第 11 站 · 能飞了',t:'前后左右，还能自己转圈',hint:'点方向按钮，观察桨的转速差',
+ html:()=>`<h3>最后一步：让它听指挥</h3>
+ <p class="lead">想往前走？先让机头低一点，升力就有了向前的分量。想转圈？故意让反扭矩<b>不再抵消</b>。</p>
+ <div class="row">
+  <button data-act="cmd" data-c="f">↑ 前进</button><button data-act="cmd" data-c="b">↓ 后退</button>
+  <button data-act="cmd" data-c="l">← 左移</button><button data-act="cmd" data-c="r">→ 右移</button>
+  <button data-act="cmd" data-c="cw">↻ 顺时针自转</button><button data-act="cmd" data-c="ccw">↺ 逆时针自转</button>
+  <button class="primary" data-act="cmd" data-c="h">悬停</button>
+ </div>
+ <div class="readout">
+  <div class="ro"><small>当前指令</small><b id="cmdv" style="font-size:14px">悬停</b></div>
+  <div class="ro"><small>净反扭矩</small><b id="netv">0</b></div>
+ </div>
+ <div class="bars" id="bars"></div>
+ <div class="note"><b>规律：</b>四个桨转速<b>一样</b> → 悬停；<b>有差别</b> → 倾斜、平移；<b>一对对角桨一起变快</b> → 机身自己转。</div>
+ <div class="fb" id="fb">试试各个按钮。</div>`,
+ legend:()=>legend([['正桨',C.cyan],['反桨',C.orange],['运动方向',C.gold]]),
+ reset:()=>{S.cmd='h';S.bars=[.5,.5,.5,.5];S.yaw=0;S.dx=0;S.dy=0;},
+ tick:(dt)=>{
+   const M={h:[.5,.5,.5,.5],f:[.38,.38,.68,.68],b:[.68,.68,.38,.38],
+     l:[.68,.38,.38,.68],r:[.38,.68,.68,.38],cw:[.68,.38,.68,.38],ccw:[.38,.68,.38,.68]};
+   S.bars=M[S.cmd]||M.h;bars(S.bars,[1,-1,1,-1]);
+   if(S.cmd==='cw'||S.cmd==='ccw')S.yaw+=(S.cmd==='cw'?1:-1)*.9*dt;
+   if(S.cmd==='f')S.dy-=32*dt;if(S.cmd==='b')S.dy+=32*dt;
+   if(S.cmd==='l')S.dx-=32*dt;if(S.cmd==='r')S.dx+=32*dt;
+   S.dx=Math.max(-110,Math.min(110,S.dx));S.dy=Math.max(-80,Math.min(80,S.dy));
+   const net=S.cmd==='cw'?1:(S.cmd==='ccw'?-1:0);
+   const e=$('netv');if(e)e.textContent=net>0?'+1':(net<0?'-1':'0');
+ },
+ draw:(dt,t)=>{bg();
+   T('俯视 · 指令：'+$('cmdv').textContent,W/2,38,17,C.text,'center','700');
+   ctx.save();ctx.translate(S.dx,S.dy);
+   droneTop(W/2,H/2,135,{t,yaw:S.yaw,dirs:[1,-1,1,-1],thr:S.bars});
+   ctx.restore();
+   const dirs={f:[0,-1,'前进'],b:[0,1,'后退'],l:[-1,0,'左移'],r:[1,0,'右移']};
+   if(dirs[S.cmd]){const d=dirs[S.cmd];
+     arrow(W/2+d[0]*120,H/2+d[1]*100,W/2+d[0]*210,H/2+d[1]*175,C.gold,3);
+     T(d[2],W/2+d[0]*220,H/2+d[1]*185+5,15,C.gold,'center','700');}
+   if(S.cmd==='cw'||S.cmd==='ccw'){
+     ctx.strokeStyle=C.gold;ctx.lineWidth=3;ctx.setLineDash([7,6]);
+     ctx.beginPath();ctx.arc(W/2,H/2,180,-1,1.4);ctx.stroke();ctx.setLineDash([]);
+     T('自转',W/2,H-28,16,C.gold,'center','700');}
+   T('四个桨的转速差 = 全部动作的来源',W/2,H-28,14,C.muted,'center');
+ }
+},
+/* 11 */{
+ k:'第 12 站 · 收尾',t:'总结：一台无人机到底需要什么',hint:'把整节课串成一个闭环',
+ html:()=>`<h3>回头看看，我们是一路被「问题」推着走过来的</h3>
+ <div class="sumlist">
+  <div class="sumitem"><b>① 螺旋桨</b><span>要有翼型和迎角；还得正桨 / 反桨成对，才能抵消反扭矩</span></div>
+  <div class="sumitem"><b>② 电机 + 电调 + 电池</b><span>转速必须能随时调，不能只会「全开」</span></div>
+  <div class="sumitem"><b>③ 机架</b><span>把动力系统固定成一个整体</span></div>
+  <div class="sumitem"><b>④ 传感器</b><span>高度（气压计 / 测距）+ 姿态三个角（IMU）</span></div>
+  <div class="sumitem"><b>⑤ 飞控 = 控制系统</b><span>拿测量值跟目标比，算出四个桨各转多快</span></div>
+  <div class="sumitem"><b>⑥ 控制算法</b><span>低了加速 / 高了减速，倾斜就扶平，想走就故意倾斜</span></div>
+ </div>
+ <div class="formula">测量 → 比较 → 调整 → 再测量 …… 一直循环<br>（每秒几百上千次，这个圈叫「闭环控制」）</div>
+ <div class="note ok"><b>一句话：</b>无人机不是「会飞的玩具」，是一台<b>能随时看见自己状态、并且不停纠正自己</b>的机器。</div>
+ <div class="note q">课后想一想：规则太死，飞机会在目标高度上下晃。你会怎么改，让它停得更稳？</div>
+ <div class="fb" id="fb"></div>`,
+ legend:()=>legend([['感知',C.gold],['判断',C.blue],['执行',C.cyan]]),
+ reset:()=>{},
+ draw:(dt,t)=>{bg();
+   T('闭环控制',W/2,44,19,C.text,'center','700');
+   const nodes=[[180,180,'传感器','测高度 / 测姿态',C.gold],
+     [580,180,'飞控','跟目标比，做判断',C.blue],
+     [380,370,'电机与桨','四个桨差别地转',C.cyan]];
+   nodes.forEach(n=>{rr(n[0]-100,n[1]-42,200,84,12,'#142239',n[4],2);
+     T(n[2],n[0],n[1]-8,17,n[4],'center','700');T(n[3],n[0],n[1]+18,12,C.muted,'center');});
+   arrow(285,160,470,160,C.gold,2);
+   arrow(540,225,430,325,C.blue,2);
+   arrow(300,325,205,225,C.cyan,2);
+   T('测量值',378,145,12,C.gold,'center');
+   T('控制指令',520,290,12,C.blue,'center');
+   T('飞机状态改变',225,290,12,C.cyan,'center');
+   T('每秒循环几百上千次',W/2,H-24,15,C.green,'center','700');
+ }
+}
+];
+
+/* ========================= 渲染与交互 ========================= */
+function buildSidebar(){
+  $('steps').innerHTML=steps.map((s,i)=>'<div class="step'+(i===0?' on':'')+'" data-i="'+i+'">'+
+    '<span class="num">'+(i+1)+'</span><span>'+s.t+'</span></div>').join('');
+}
+function go(i){
+  cur=Math.max(0,Math.min(steps.length-1,i));
+  const s=steps[cur];
+  $('kicker').textContent=s.k; $('title').textContent=s.t; $('hint').textContent=s.hint||'';
+  $('pn').textContent=cur+1;
+  $('content').innerHTML=s.html();
+  S={}; if(s.reset)s.reset();
+  if(s.legend)s.legend();else legend([]);
+  badge(cur===11?'课堂总结':'示意动画',false);
+  cv.className=(cur===3?'clickable':'');
+  document.querySelectorAll('.step').forEach((e,j)=>{
+    e.className='step'+(j===cur?' on':'')+(j<cur?' done':'');});
+  $('prev').disabled=(cur===0);
+  $('next').textContent=(cur===steps.length-1?'回到开头 ↺':'下一站 →');
+  if(s.tick)bars([.5,.5,.5,.5],[1,-1,1,-1]);
+}
+/* 按钮 / 选项统一分发 */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const a=el.dataset.act, v=el.dataset;
+  switch(a){
+   case 'go': go(+v.to); break;
+   case 'blade': {
+     S.pick=+v.i;
+     document.querySelectorAll('.blade').forEach((b,j)=>{b.className='blade'+(j===S.pick?' pick':'');});
+     const msgs=[
+      ['上下一样平，切空气时不产生向上的力。再想想。','bad'],
+      ['上下对称、没有斜角，空气顺着两边滑过去，托不起来。','bad'],
+      ['对！上凸下平 + 斜着切进空气 = 升力。而且还得再做一片镜像的（正桨 / 反桨），记住这一点。','good'],
+      ['迎角反了，空气被往上推，飞机被往下按。装反了。','bad']];
+     fb(msgs[S.pick][0],msgs[S.pick][1]);
+     const card=document.querySelectorAll('.blade')[S.pick];
+     card.className='blade pick '+(S.pick===2?'yes':'no');
+     break;}
+   case 'fly': S.fly=true;S.spinV=0;fb('飞机起来了……等等，机身怎么在转？','bad');break;
+   case 'stopfly': S.fly=false;S.spinV=0;S.yaw=0;S.spin=0;fb('断电，重新来。');break;
+   case 'alldir': S.dirs=[1,1,1,1];S.yaw=0;fb('又全同向了，机身开始打转。');break;
+   case 'fly2': S.fly=true;S.alt=0;fb('一直上升，停不下来。','bad');break;
+   case 'stop2': S.fly=false;S.alt=0;fb('');break;
+   case 'checkopts': {
+     const got=[...document.querySelectorAll('[data-opt]:checked')].map(x=>x.dataset.opt);
+     if(got.length===1&&got[0]==='h'){fb('对！只要知道「我现在几米」，就能跟 3 米比。','good');
+       $('sensor').style.display='block';}
+     else if(got.includes('h')&&got.includes('a')){fb('高度对了，姿态也确实需要 —— 但那是下一站才被迫加上的。这一站先只留「高度」。','bad');}
+     else fb('再想想：跟「3 米」直接比较的是哪一个量？','bad');
+     break;}
+   case 'resetctrl': S.alt=0;S.v=0;fb('回到地面，重新爬升。');break;
+   case 'windon': go(7);break;
+   case 'gust': S.gust=true;fb('风来了 —— 高度传感器还在正常工作，可飞机还是翻了。','bad');break;
+   case 'resetgust': S.alt=3;S.tilt=0;S.gust=false;S.fall=false;fb('重新悬停。');break;
+   case 'zeropose': S.r=0;S.p=0;S.y=0;
+     ['rsl','psl','ysl'].forEach(id=>$(id).value=0);
+     $('rv').textContent='0°';$('pv').textContent='0°';$('yv').textContent='0°';break;
+   case 'push': S.roll=0.42;fb('机身向右歪了，看四个桨怎么反应。');break;
+   case 'pushL': S.roll=-0.42;fb('机身向左歪了，看四个桨怎么反应。');break;
+   case 'level': S.roll=0;fb('恢复水平。');break;
+   case 'cmd': {
+     S.cmd=v.c;
+     const names={h:'悬停',f:'前进',b:'后退',l:'左移',r:'右移',cw:'顺时针自转',ccw:'逆时针自转'};
+     $('cmdv').textContent=names[v.c];
+     document.querySelectorAll('[data-act="cmd"]').forEach(b=>b.classList.toggle('sel',b.dataset.c===v.c));
+     fb(v.c==='h'?'四个桨转速相同 → 悬停。':v.c==='cw'||v.c==='ccw'?
+       '一对对角桨变快、另一对变慢 → 反扭矩不再抵消 → 机身自转。':
+       '前后（或左右）两对桨转速不同 → 机身倾斜 → 升力有了水平分量。','good');
+     break;}
+  }
+});
+/* 滑块 */
+document.addEventListener('input',e=>{
+  const id=e.target.id;
+  if(id==='tgt'){S.target=+e.target.value;$('tgtv').textContent=S.target.toFixed(1)+' m';}
+  if(id==='rsl'){S.r=+e.target.value;$('rv').textContent=S.r+'°';}
+  if(id==='psl'){S.p=+e.target.value;$('pv').textContent=S.p+'°';}
+  if(id==='ysl'){S.y=+e.target.value;$('yv').textContent=S.y+'°';}
+});
+/* canvas 点击 */
+cv.addEventListener('click',e=>{
+  const s=steps[cur];if(!s.click)return;
+  const r=cv.getBoundingClientRect();
+  s.click((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);
+});
+/* 导航 */
+$('steps').addEventListener('click',e=>{const d=e.target.closest('[data-i]');if(d)go(+d.dataset.i);});
+$('prev').addEventListener('click',()=>go(cur-1));
+$('next').addEventListener('click',()=>go(cur===steps.length-1?0:cur+1));
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.key==='ArrowRight')go(cur===steps.length-1?0:cur+1);
+  if(e.key==='ArrowLeft')go(cur-1);
+});
+/* 动画主循环 */
+let last=performance.now(),tt=0;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;tt+=dt;
+  const s=steps[cur];
+  if(s.tick)s.tick(dt,tt);
+  if(s.draw)s.draw(dt,tt);
+  requestAnimationFrame(loop);
+}
+buildSidebar();go(0);requestAnimationFrame(loop);
+</script>
+</body>
+</html>
